@@ -191,11 +191,22 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7            # Refresh token TTL
 
 ## 🧪 Demo Credentials
 
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin123` | admin |
-| `user1` | `password123` | user |
-| `test` | `test123` | user |
+> ⚠️ **Note**: These are **example credentials for testing only**!  
+> In production, integrate with a real database and use hashed passwords.
+
+The following dummy users are hardcoded in `database.py` for demonstration purposes:
+
+| Username | Password | Role | Status |
+|----------|----------|------|--------|
+| `admin` | `admin123` | admin | ✅ Active |
+| `user1` | `password123` | user | ✅ Active |
+| `test` | `test123` | user | ✅ Active |
+| `inactive_user` | `inactive123` | user | ❌ Disabled |
+
+**For Production:**
+- Replace `database.py` with actual database (PostgreSQL, MongoDB, etc.)
+- Use password hashing (bcrypt/argon2)
+- Never store plain-text passwords!
 
 ---
 
@@ -207,19 +218,13 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7            # Refresh token TTL
 - [x] Protected Routes
 - [x] Modular Code Structure
 
-### Phase 2: Enhanced Security 🔜
-- [ ] Password Hashing (bcrypt/argon2)
-- [ ] Token Blacklisting (Redis)
-- [ ] Rate Limiting
-- [ ] CORS Configuration
-
-### Phase 3: SSO & OAuth 📅
+### Phase 2: SSO & OAuth 📅
 - [ ] **Google OAuth 2.0** - Sign in with Google
 - [ ] **GitHub OAuth** - Sign in with GitHub
 - [ ] **Microsoft SSO** - Enterprise SSO
 - [ ] **SAML 2.0 Support** - Enterprise identity providers
 
-### Phase 4: Advanced Features 🔮
+### Phase 3: Advanced Features 🔮
 - [ ] Multi-Factor Authentication (MFA)
 - [ ] Email Verification
 - [ ] Password Reset Flow
