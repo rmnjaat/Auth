@@ -10,6 +10,8 @@ from fastapi import Request, HTTPException
 from config import SECRET_KEY, ALGORITHM
 from database import get_user_by_username
 
+from datetime import datetime
+from routes.auth_routes import redis_json
 
 def authorize_user(request: Request) -> str:
     """
@@ -84,3 +86,42 @@ def authorize_user(request: Request) -> str:
             status_code=401,
             detail="Invalid token"
         )
+
+
+def authorize_session(request: Request) -> str:
+    """
+    Validate session from cookie.
+    
+    Args:
+        request: FastAPI Request object
+        
+    Returns:
+        Username from the valid session
+        
+    Raises:
+        HTTPException: 401 for invalid/missing/expired session
+    """
+    # Get session_id from cookies (FastAPI handles cookie parsing)
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Session ID missing"
+        )
+    
+    # Validate session exists
+    session_data = redis_json.get(session_id)
+    if not session_data:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid session ID"
+        )
+    
+    # Check if session expired
+    if session_data.get("expires_at") < datetime.now():
+        raise HTTPException(
+            status_code=401,
+            detail="Session expired"
+        )
+    
+    return session_data.get("username")

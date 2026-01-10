@@ -18,6 +18,7 @@ Project Structure:
 └── m2/               # Public module
 """
 
+from dependencies import authorize_session
 from fastapi import FastAPI, Security
 import uvicorn
 
@@ -29,6 +30,7 @@ from routes.auth_routes import router as auth_router
 from routes.general_routes import router as general_router
 from m1 import mf1 as m1_router
 from m2 import mf2 as m2_router
+from m3 import mf3 as m3_router
 
 
 # ============ APP INITIALIZATION ============
@@ -58,6 +60,12 @@ app.include_router(
 
 # m2 routes - PUBLIC (no auth required)
 app.include_router(m2_router.router)
+
+
+# m3 session based routes
+app.include_router(m3_router.router,
+    dependencies=[Security(authorize_session)]
+)
 
 
 # ============ ENTRYPOINT ============

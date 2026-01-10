@@ -5,12 +5,20 @@ Login and token refresh endpoints.
 """
 
 import jwt
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException , Response
 
 from config import ACCESS_TOKEN_EXPIRE_MINUTES
 from models import LoginRequest, RefreshTokenRequest, TokenResponse
 from database import authenticate_user, get_user_by_username
 from auth import create_access_token, create_refresh_token, decode_refresh_token
+
+import uuid
+from datetime import datetime, timedelta
+from fastapi import APIRouter, HTTPException, Response, Request
+## store session_id , {"user_name": "admin", "role": "admin"}
+redis_json = {}
+
+SESSION_TTL  = 30*60 #seconds
 
 
 router = APIRouter(
@@ -119,3 +127,94 @@ def refresh_token(request: RefreshTokenRequest):
             status_code=401,
             detail="Invalid refresh token"
         )
+
+
+### Session Managment
+# generate session_id
+@router.post("/session_log_in")
+def session_log_in(request: LoginRequest, response: Response):
+    user = authenticate_user(request.username, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    session_id = str(uuid.uuid4())
+
+    redis_json[session_id] = {
+        "username": user["username"],
+        "role": user.get("role", "user"),
+        "created_at": datetime.now(),
+        "expires_at": datetime.now() + timedelta(minutes=SESSION_TTL)
+    }
+
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=SESSION_TTL
+    )
+
+    return {
+        "message": "Login successful"
+    }
+
+
+
+@router.post("/session_log_out")
+def session_log_out(request: Request, response: Response):
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Session ID missing"
+        )
+    
+    if session_id in redis_json:
+        del redis_json[session_id]
+    
+    response.delete_cookie("session_id")
+    
+    return {"message": "Logout successful"}
+
+@router.post("/rotate_session")
+def rotate_session(request: Request, response: Response):
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Session ID missing"
+        )
+    
+    user = redis_json.get(session_id)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid session ID"
+        )
+    
+    del redis_json[session_id]
+
+    session_id = str(uuid.uuid4())
+    
+    redis_json[session_id] = {
+        "username": user["username"],
+        "role": user.get("role", "user"),
+        "created_at": datetime.now(),
+        "expires_at": datetime.now() + timedelta(minutes=SESSION_TTL)
+    }
+    
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=SESSION_TTL
+    )
+    
+    return {"message": "Session rotated successfully"}
+  
