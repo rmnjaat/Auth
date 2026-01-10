@@ -1,6 +1,6 @@
-# 🔐 Auth API
+# 🔐 Auth API - Learning Project
 
-A **FastAPI-based authentication system** implementing JWT (JSON Web Tokens) for secure API access.
+A **FastAPI-based authentication system** implementing both **JWT tokens** and **session-based authentication** for learning purposes.
 
 ---
 
@@ -10,28 +10,34 @@ A **FastAPI-based authentication system** implementing JWT (JSON Web Tokens) for
 - [Project Structure](#-project-structure)
 - [Installation](#-installation)
 - [API Endpoints](#-api-endpoints)
-- [Authentication Flow](#-authentication-flow)
+- [Authentication Methods](#-authentication-methods)
 - [Usage Examples](#-usage-examples)
 - [Configuration](#️-configuration)
-- [Roadmap](#-roadmap)
+- [Demo Credentials](#-demo-credentials)
 
 ---
 
 ## ✨ Features
 
-### Current Implementation ✅
-- **JWT-based Authentication** - Secure token-based auth
-- **Access & Refresh Tokens** - Short-lived access + long-lived refresh tokens
-- **Protected Routes** - Security middleware for route protection
-- **Modular Architecture** - Clean separation of concerns
-- **User Role Support** - Role included in token payload
+### Implemented ✅
 
-### Coming Soon 🚧
-- [ ] **SSO (Single Sign-On)** - Enterprise authentication
-- [ ] **Google OAuth 2.0** - Sign in with Google
-- [ ] **Password Hashing** - bcrypt/argon2 implementation
-- [ ] **Rate Limiting** - API rate limiting
-- [ ] **Token Blacklisting** - Logout/revoke tokens
+**JWT-Based Authentication:**
+- Access & Refresh Tokens with different expiration times
+- Bearer token authentication for protected routes
+- Token refresh mechanism
+- User role support in token payload
+
+**Session-Based Authentication:**
+- Cookie-based session management
+- Session login/logout functionality
+- Session rotation for enhanced security
+- In-memory session storage (Redis-like dictionary)
+
+**Architecture:**
+- Modular code organization
+- Protected and public route modules
+- FastAPI security dependencies
+- Comprehensive API documentation
 
 ---
 
@@ -44,12 +50,13 @@ Auth/
 ├── database.py          # 🗄️ User database & auth helpers
 ├── models.py            # 📦 Pydantic models
 ├── auth.py              # 🔐 JWT token utilities
-├── dependencies.py      # 🛡️ Security dependencies
+├── dependencies.py      # 🛡️ Security dependencies (JWT & Session)
 ├── routes/
-│   ├── auth_routes.py   # 🔑 Login & refresh endpoints
+│   ├── auth_routes.py   # 🔑 Login, refresh & session endpoints
 │   └── general_routes.py# 🏠 Health & root endpoints
-├── m1/                  # 🔒 Protected module (requires auth)
-└── m2/                  # 🌐 Public module (no auth)
+├── m1/                  # 🔒 JWT-protected module
+├── m2/                  # 🌐 Public module
+└── m3/                  # 🍪 Session-protected module
 ```
 
 ---
@@ -86,59 +93,72 @@ The API will be available at: `http://localhost:8000`
 
 ## 🔗 API Endpoints
 
+### General Routes
 | Method | Endpoint | Auth | Description |
 |--------|----------|:----:|-------------|
 | `GET` | `/` | ❌ | Welcome message |
 | `GET` | `/health` | ❌ | Health check |
-| `POST` | `/auth/login` | ❌ | Login & get tokens |
+
+### JWT Authentication Routes
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| `POST` | `/auth/login` | ❌ | Login & get JWT tokens |
 | `POST` | `/auth/refresh` | ❌ | Refresh access token |
-| `*` | `/m1/*` | ✅ | Protected routes |
-| `*` | `/m2/*` | ❌ | Public routes |
+| `*` | `/m1/*` | ✅ JWT | JWT-protected routes |
+
+### Session Authentication Routes
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| `POST` | `/auth/session_log_in` | ❌ | Login & get session cookie |
+| `POST` | `/auth/session_log_out` | 🍪 | Logout & clear session |
+| `POST` | `/auth/rotate_session` | 🍪 | Rotate session ID |
+| `*` | `/m3/*` | ✅ Session | Session-protected routes |
+
+### Public Routes
+| Method | Endpoint | Auth | Description |
+|--------|----------|:----:|-------------|
+| `*` | `/m2/*` | ❌ | Public routes (no auth) |
 
 ---
 
-## 🔄 Authentication Flow
+## 🔄 Authentication Methods
 
+### 1. JWT-Based Authentication
+
+**Flow:**
 ```
-┌─────────────┐      POST /auth/login       ┌─────────────┐
-│   Client    │ ───────────────────────────▶│   Server    │
-│             │   {username, password}      │             │
-└─────────────┘                             └─────────────┘
-       │                                           │
-       │◀──────────────────────────────────────────│
-       │    {access_token, refresh_token}          │
-       │                                           │
-       │    GET /protected-route                   │
-       │    Authorization: Bearer <access_token>   │
-       │──────────────────────────────────────────▶│
-       │                                           │
-       │◀──────────────────────────────────────────│
-       │         { protected_data }                │
-       │                                           │
-       │ ─ ─ ─ Access Token Expires ─ ─ ─ ─ ─ ─ ─ │
-       │                                           │
-       │    POST /auth/refresh                     │
-       │    {refresh_token}                        │
-       │──────────────────────────────────────────▶│
-       │                                           │
-       │◀──────────────────────────────────────────│
-       │    {new_access_token}                     │
-       ▼                                           ▼
+1. Login → Get access_token + refresh_token
+2. Use access_token in Authorization header
+3. When expired → Use refresh_token to get new access_token
 ```
 
-### Token Types
+**Token Details:**
+- **Access Token**: 15 minutes expiry
+- **Refresh Token**: 7 days expiry
+- **Header Format**: `Authorization: Bearer <token>`
 
-| Token | Purpose | Expiration | Secret Key |
-|-------|---------|------------|------------|
-| **Access Token** | API access | 15 minutes | `SECRET_KEY` |
-| **Refresh Token** | Get new access token | 7 days | `REFRESH_SECRET_KEY` |
+### 2. Session-Based Authentication
+
+**Flow:**
+```
+1. Session Login → Cookie automatically set
+2. Cookie sent automatically with each request
+3. Session stored in-memory (redis_json dict)
+4. Logout → Session deleted from storage
+```
+
+**Session Details:**
+- **Duration**: 30 minutes (1800 seconds)
+- **Storage**: In-memory dictionary
+- **Cookie Attributes**: `httponly`, `secure`, `samesite=strict`
 
 ---
 
 ## 💡 Usage Examples
 
-### 1. Login
+### JWT Authentication
 
+#### 1. JWT Login
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
@@ -156,15 +176,13 @@ curl -X POST http://localhost:8000/auth/login \
 }
 ```
 
-### 2. Access Protected Route
-
+#### 2. Access JWT-Protected Route
 ```bash
-curl http://localhost:8000/m1/your-endpoint \
+curl http://localhost:8000/m1/ \
   -H "Authorization: Bearer <your_access_token>"
 ```
 
-### 3. Refresh Token
-
+#### 3. Refresh Access Token
 ```bash
 curl -X POST http://localhost:8000/auth/refresh \
   -H "Content-Type: application/json" \
@@ -173,28 +191,72 @@ curl -X POST http://localhost:8000/auth/refresh \
 
 ---
 
+### Session Authentication
+
+#### 1. Session Login
+```bash
+curl -X POST http://localhost:8000/auth/session_log_in \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+```
+
+**Response:**
+```json
+{
+  "message": "Login successful"
+}
+```
+_Cookie `session_id` is automatically set_
+
+#### 2. Access Session-Protected Route
+```bash
+curl http://localhost:8000/m3/ \
+  --header 'Cookie: session_id=<your_session_id>'
+```
+
+#### 3. Rotate Session (Security Best Practice)
+```bash
+curl -X POST http://localhost:8000/auth/rotate_session \
+  --header 'Cookie: session_id=<your_session_id>'
+```
+
+#### 4. Logout
+```bash
+curl -X POST http://localhost:8000/auth/session_log_out \
+  --header 'Cookie: session_id=<your_session_id>'
+```
+
+---
+
 ## ⚙️ Configuration
 
-Settings are in `config.py`:
+Settings in `config.py`:
 
 ```python
+# JWT Settings
 SECRET_KEY = "your-secret-key"           # JWT signing key
 REFRESH_SECRET_KEY = "refresh-secret"    # Refresh token key
 ALGORITHM = "HS256"                      # JWT algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = 15         # Access token TTL
 REFRESH_TOKEN_EXPIRE_DAYS = 7            # Refresh token TTL
+
+# Session Settings (in auth_routes.py)
+SESSION_TTL = 30 * 60  # 30 minutes in seconds
 ```
 
-> ⚠️ **Production**: Use environment variables for secrets!
+> ⚠️ **Production Warning**: 
+> - Use environment variables for secrets
+> - Use real database (Redis/PostgreSQL) for sessions
+> - Enable password hashing (bcrypt/argon2)
+> - Use HTTPS in production (`secure=True` for cookies)
 
 ---
 
 ## 🧪 Demo Credentials
 
-> ⚠️ **Note**: These are **example credentials for testing only**!  
-> In production, integrate with a real database and use hashed passwords.
+> ⚠️ **Note**: These are **demo credentials for learning only**!
 
-The following dummy users are hardcoded in `database.py` for demonstration purposes:
+Hardcoded users in `database.py`:
 
 | Username | Password | Role | Status |
 |----------|----------|------|--------|
@@ -203,33 +265,11 @@ The following dummy users are hardcoded in `database.py` for demonstration purpo
 | `test` | `test123` | user | ✅ Active |
 | `inactive_user` | `inactive123` | user | ❌ Disabled |
 
-**For Production:**
-- Replace `database.py` with actual database (PostgreSQL, MongoDB, etc.)
-- Use password hashing (bcrypt/argon2)
-- Never store plain-text passwords!
-
----
-
-## 🗺️ Roadmap
-
-### Phase 1: Core Auth ✅
-- [x] JWT Access Tokens
-- [x] JWT Refresh Tokens
-- [x] Protected Routes
-- [x] Modular Code Structure
-
-### Phase 2: SSO & OAuth 📅
-- [ ] **Google OAuth 2.0** - Sign in with Google
-- [ ] **GitHub OAuth** - Sign in with GitHub
-- [ ] **Microsoft SSO** - Enterprise SSO
-- [ ] **SAML 2.0 Support** - Enterprise identity providers
-
-### Phase 3: Advanced Features 🔮
-- [ ] Multi-Factor Authentication (MFA)
-- [ ] Email Verification
-- [ ] Password Reset Flow
-- [ ] Session Management
-- [ ] Audit Logging
+**Production Requirements:**
+- Use a real database (PostgreSQL, MongoDB, etc.)
+- Hash passwords with bcrypt/argon2
+- Implement proper user management
+- Never store plain-text passwords
 
 ---
 
@@ -241,22 +281,20 @@ The following dummy users are hardcoded in `database.py` for demonstration purpo
 | **PyJWT** | JWT encoding/decoding |
 | **Pydantic** | Data validation |
 | **Uvicorn** | ASGI server |
+| **Python** | Programming language |
 
 ---
 
-## 🤝 Contributing
+## 🎓 Learning Outcomes
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is for learning purposes.
+This project demonstrates:
+- ✅ JWT token-based authentication
+- ✅ Session-based authentication with cookies
+- ✅ Protected route implementation
+- ✅ Security dependency injection
+- ✅ Token refresh mechanism
+- ✅ Session management (login/logout/rotate)
+- ✅ FastAPI security best practices
 
 ---
 
