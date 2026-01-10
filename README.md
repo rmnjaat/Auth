@@ -301,3 +301,15 @@ This project demonstrates:
 <p align="center">
   Made with ❤️ while learning FastAPI Authentication
 </p>
+
+---
+
+## 🚧 Coming SOON
+
+### Google-Based Authentication & SSO Implementation
+
+**Upcoming Features:**
+- 🔐 **Google OAuth 2.0 Integration** - Sign in with Google
+- 🏢 **Single Sign-On (SSO)** - Enterprise-ready authentication
+
+Stay tuned for updates! 🎉
